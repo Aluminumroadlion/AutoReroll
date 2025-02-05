@@ -1,0 +1,123 @@
+[manifest]
+version = "1.0.0"
+dump_lua = true
+priority = 0
+
+[[patches]]
+[patches.pattern]
+target = "functions/button_callbacks.lua"
+pattern = '''
+    G.FUNCS.reroll_shop = function(e) 
+        stop_use()
+        G.CONTROLLER.locks.shop_reroll = true
+        if G.CONTROLLER:save_cardarea_focus('shop_jokers') then G.CONTROLLER.interrupt.focus = true end
+        if G.GAME.current_round.reroll_cost > 0 then 
+        inc_career_stat('c_shop_dollars_spent', G.GAME.current_round.reroll_cost)
+        inc_career_stat('c_shop_rerolls', 1)
+        ease_dollars(-G.GAME.current_round.reroll_cost)
+        end
+        G.E_MANAGER:add_event(Event({
+            trigger = 'immediate',
+            func = function()
+            local final_free = G.GAME.current_round.free_rerolls > 0
+            G.GAME.current_round.free_rerolls = math.max(G.GAME.current_round.free_rerolls - 1, 0)
+            G.GAME.round_scores.times_rerolled.amt = G.GAME.round_scores.times_rerolled.amt + 1
+
+            calculate_reroll_cost(final_free)
+            for i = #G.shop_jokers.cards,1, -1 do
+                local c = G.shop_jokers:remove_card(G.shop_jokers.cards[i])
+                c:remove()
+                c = nil
+            end
+
+            --save_run()
+
+            play_sound('coin2')
+            play_sound('other1')
+            
+            for i = 1, G.GAME.shop.joker_max - #G.shop_jokers.cards do
+                local new_shop_card = create_card_for_shop(G.shop_jokers)
+                G.shop_jokers:emplace(new_shop_card)
+                new_shop_card:juice_up()
+            end
+            return true
+            end
+        }))
+        G.E_MANAGER:add_event(Event({
+            trigger = 'after',
+            delay = 0.3,
+            func = function()
+            G.E_MANAGER:add_event(Event({
+            func = function()
+                G.CONTROLLER.interrupt.focus = false
+                G.CONTROLLER.locks.shop_reroll = false
+                G.CONTROLLER:recall_cardarea_focus('shop_jokers')
+                SMODS.calculate_context({reroll_shop = true})
+                return true
+            end
+            }))
+            return true
+        end
+        }))
+        G.E_MANAGER:add_event(Event({ func = function() save_run(); return true end}))
+    end
+'''
+position = "at"
+payload = '''
+    G.FUNCS.reroll_shop = function(e) 
+        stop_use()
+        G.CONTROLLER.locks.shop_reroll = true
+        if G.CONTROLLER:save_cardarea_focus('shop_jokers') then G.CONTROLLER.interrupt.focus = true end
+        if G.GAME.current_round.reroll_cost > 0 then 
+        inc_career_stat('c_shop_dollars_spent', G.GAME.current_round.reroll_cost)
+        inc_career_stat('c_shop_rerolls', 1)
+        local quickrerolls = (G.GAME.quickrerolls or false)
+        ease_dollars(-G.GAME.current_round.reroll_cost, true)
+        end
+        G.E_MANAGER:add_event(Event({
+            trigger = 'immediate',
+            func = function()
+            local final_free = G.GAME.current_round.free_rerolls > 0
+            G.GAME.current_round.free_rerolls = math.max(G.GAME.current_round.free_rerolls - 1, 0)
+            G.GAME.round_scores.times_rerolled.amt = G.GAME.round_scores.times_rerolled.amt + 1
+
+            calculate_reroll_cost(final_free)
+            for i = #G.shop_jokers.cards,1, -1 do
+                local c = G.shop_jokers:remove_card(G.shop_jokers.cards[i])
+                c:remove()
+                c = nil
+            end
+
+            --save_run()
+
+            play_sound('coin2')
+            play_sound('other1')
+            
+            for i = 1, G.GAME.shop.joker_max - #G.shop_jokers.cards do
+                local new_shop_card = create_card_for_shop(G.shop_jokers)
+                G.shop_jokers:emplace(new_shop_card)
+                new_shop_card:juice_up()
+            end
+            return true
+            end
+        }), 'other', true)
+        G.E_MANAGER:add_event(Event({
+            trigger = 'after',
+            delay = 0.3,
+            func = function()
+            G.E_MANAGER:add_event(Event({
+            func = function()
+                G.CONTROLLER.interrupt.focus = false
+                G.CONTROLLER.locks.shop_reroll = false
+                G.CONTROLLER:recall_cardarea_focus('shop_jokers')
+                SMODS.calculate_context({reroll_shop = true})
+                return true
+            end
+            }))
+            return true
+        end
+        }), 'other', true)
+        G.E_MANAGER:add_event(Event({ func = function() save_run(); return true end}))
+    end
+'''
+match_indent=true
